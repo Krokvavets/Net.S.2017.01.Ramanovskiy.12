@@ -23,22 +23,28 @@ namespace Task1.Test
             foreach (var element in queue)
                 str += element;
 
-            Assert.AreEqual("123", str);
+            Assert.AreEqual("234", str);
         }
         [Test]
         public void Positive_Test_String()
         {
-            Queue<string> queue = new Queue<string>();
+            Queue<string> queue = new Queue<string>(3);
             queue.Enqueue("1");
             queue.Enqueue("2");
             queue.Enqueue("3");
+            queue.Dequeue();
+            queue.Enqueue("4");
+            queue.Enqueue("4");
             queue.Enqueue("4");
             queue.Dequeue();
+            queue.Enqueue("2");
+
             string str = String.Empty;
             foreach (var element in queue)
                 str += element;
 
-            Assert.AreEqual("123", str);
+            Assert.AreEqual("34442", str);
         }
     }
+
 }

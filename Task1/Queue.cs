@@ -7,30 +7,30 @@ using System.Threading.Tasks;
 
 namespace Task1
 {
-    public class Queue<T> : IEnumerable<T>, ICollection, IEnumerable
+    public class Queue<T> : IEnumerable<T>, IEnumerable
     {
         private T[] array;
-        private T head, tail;
+        private int head, tail;
         private const int defaultCapacity = 50;
         private int capacity;
 
-        #region ICollection
         public int Count { get; private set; }
-        public object SyncRoot => throw new NotImplementedException();
-        public bool IsSynchronized => throw new NotImplementedException();
-        #endregion
 
         public Queue()
         {
             capacity = defaultCapacity;
             Count = 0;
             array = new T[defaultCapacity];
+            head = 0;
+            tail = -1;
         }
         public Queue(int capacity)
         {
             if (capacity < 0) throw new ArgumentException("capacity well be more then zero");
             array = new T[capacity];
             this.capacity = capacity;
+            head = 0;
+            tail = -1;
         }
         public Queue(IEnumerable<T> collection)
         {
@@ -40,17 +40,17 @@ namespace Task1
             int i = 0;
             foreach (var element in collection)
                 array[i++] = element;
-            head = array.First();
-            tail = array.Last();
+            head = 0;
+            tail = array.Length - 1;
         }
         /// <summary>
         /// Removes all objects from the Queue.
         /// </summary>
         public void Clear()
         {
-            array = new T[capacity];
             Count = 0;
-            head = tail = default(T);
+            head = 0;
+            tail = -1;
         }
         /// <summary>
         /// Determines whether an element is in the Queue.
@@ -74,7 +74,7 @@ namespace Task1
             for (int i = arrayIndex; i < Count; i++)
                 array[i] = this.array[i];
         }
-        void ICollection.CopyTo(Array array, int index)
+        void CopyTo(Array array, int index)
         {
             CopyTo((T[])array, index);
         }
@@ -84,7 +84,18 @@ namespace Task1
         /// <returns>The object that is removed from the beginning of the Queue.</returns>
         public T Dequeue()
         {
-            return array[--Count];
+            if (tail == -1) throw new Exception("Queue is empty");
+            int i = head;
+            if (tail == head)
+            {
+                tail = -1;
+                head = 0;
+                Count--;
+                return array[i];               
+            }
+            head++;
+            Count--;
+            return array[i];           
         }
         /// <summary>
         /// Adds an object to the end of the Queue.
@@ -93,13 +104,38 @@ namespace Task1
         public void Enqueue(T item)
         {
             if (ReferenceEquals(item, null)) throw new ArgumentNullException();
-            if (Count == capacity)
+            if (tail == -1)
             {
-                if (capacity - 10 < int.MaxValue) Array.Resize(ref array, capacity);
-                if (capacity < int.MaxValue) Array.Resize(ref array, capacity);
-                else throw new ArgumentException();
+                tail = head;
+                array[head] = item;
+                Count++;
+                return;
             }
-            array[Count++] = item;
+           if( (tail + 1 == head) || (tail == array.Length - 1 && head == 0))
+            {
+                T [] newArray = new T[2 * capacity];
+                int j = 0;
+                for (int i = head; i < array.Length; i++)
+                    newArray[j++] = array[i];
+                if (tail < head)
+                    for (int i = 0; i <= tail; i++)
+                        newArray[j++] = array[i];
+                newArray[j] = item;
+                head = 0;
+                tail = j;
+                array = newArray;
+                Count++;
+                return;
+            }
+            if (tail == array.Length - 1)
+            {
+                tail = 0;
+                array[tail] = item;
+                Count++;
+                return;
+            }
+            array[++tail] = item;
+            Count++;
         }
         /// <summary>
         /// Copies the Queue elements to a new array.
@@ -136,41 +172,42 @@ namespace Task1
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            throw new NotImplementedException();
+            return new CustomIterator(this);
         }
 
         public T Peek()
         {
-            return head;
+            return array[head];
         }
 
         private struct CustomIterator : IEnumerator<T>
         {
-            private readonly T[] collection;
+            private readonly Queue<T> collection;
             private int currentIndex;
+            private int count;
 
             public CustomIterator(Queue<T> collection)
             {
-                this.collection = new T[collection.Count];
-                collection.CopyTo(this.collection, 0);
+                this.collection = collection;
                 this.currentIndex = -1;
+                count = collection.Count;
             }
 
             public T Current
             {
                 get
                 {
-                    if (currentIndex == -1 || currentIndex == collection.Count())
+                    if (currentIndex == -1 || currentIndex == count)
                     {
                         throw new InvalidOperationException();
                     }
-                    return collection[currentIndex];
+                    return collection.Dequeue();
                 }
             }
 
             object System.Collections.IEnumerator.Current
             {
-                get { throw new NotImplementedException(); }
+                get { return Current; }
             }
 
             public void Reset()
@@ -180,7 +217,7 @@ namespace Task1
 
             public bool MoveNext()
             {
-                return ++currentIndex < collection.Count();
+                return ++currentIndex < count;
             }
             public void Dispose() { }
         }
